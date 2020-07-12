@@ -1,0 +1,164 @@
+
+<style>
+  span {
+    margin: 1rem 2rem;
+  }
+</style>
+
+<%- include('../partials/messages') %>
+<h5 class="text-center"><%= session.user.name %> dashboard</h5> 
+<form action="saveAdmins" method="post" id="saveAdminsForm" 
+  novalidate onsubmit="return false;">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <input type="hidden" name="self-user" id="self-user"
+    value="<%= session.passport.user %>" />
+  <div class=" table-responsive">
+    <table class=" table">
+      <tr>
+        <th>ID</th><th>Name</th><th>Email</th>
+        <% if (session.user.is_admin) { %>
+          <th data-toggle="admin-popover" data-placement="left"
+          >Admin</th>
+          <th data-toggle="active-popover" data-placement="left"
+          >Active</th>
+        <% } %>
+      </tr>
+      <% if(typeof users != 'undefined') { %>
+        <% users.forEach(function(i) { %>
+          <%- include('userRow', {i}); %>
+        <% }); %>
+      <% } %>
+    </table>
+  </div>
+</form>
+
+<script>
+document.onload = () => {
+  $('[data-toggle="admin-popover"]').popover();
+  $('[data-toggle="active-popover"]').popover();
+};
+
+// Return the token value
+const getToken = () => {
+  return $("input[name='_csrf']").val();
+};
+
+/**
+ * Toggle admin status when checkbox is clicked
+ */
+const toggleAdmin = (uid) => {
+  $("input").prop('disabled', true);
+  let selfUser = $("input#self-user").val();
+  if (uid == selfUser && !$("#is_admin_"+uid).prop('checked')) {
+    if (!confirm(
+        "         This will log you out. \n \
+        You won't be an admin. \n \
+        Proceed?")) 
+    {
+      $("input").prop('disabled', false);
+      $("#is_admin_"+uid).prop('checked', true);
+      return false;
+    }
+  }
+  let token = getToken();
+  let state = $("#is_admin_"+uid).prop('checked') ? 'on' : 'off';
+  fetch('toggleAdmin', {
+    headers : { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'CSRF-Token': token
+    },
+    method: 'POST',
+    body: JSON.stringify({uid: uid, state: state})
+  })
+  .then((response) => {
+    $("input").prop('disabled', false);
+    return response.json();
+  })
+  .then((data) => {
+    // success
+    if (data.msg === 'Admin updated') {
+      showPopover('admin', data);
+      return false;
+    }
+    // logout
+    if (data.msg === 'Logout') {
+      showPopover('admin', data);
+      location.reload();
+      return false;
+    }
+    // error
+    alert("Database error");
+    location.reload();
+    return false;
+  });
+};
+
+/**
+ * Toggle active status when checkbox is clicked
+ */ 
+const toggleActive = (uid) => {
+  $("input").prop('disabled', true);
+  let selfUser = $("input#self-user").val();
+  if (uid == selfUser && !$("#is_active_"+uid).prop('checked')) {
+    if (!confirm(
+        "         This will log you out. \n \
+        You won't be able to log back in, again. \n \
+        Proceed?")) 
+    {
+      $("input").prop('disabled', false);
+      $("#is_active_"+uid).prop('checked', true);
+      return false;
+    }
+  }
+  let token = getToken();
+  let state = $("#is_active_"+uid).prop('checked') ? 'on' : 'off';
+  fetch('toggleActive', {
+    headers : { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'CSRF-Token': token
+    },
+    method: 'POST',
+    body: JSON.stringify({uid: uid, state: state})
+  })
+  .then((response) => {
+    $("input").prop('disabled', false);
+    return response.json();
+  })
+  .then((data) => {
+    // success
+    if (data.msg === 'Active status updated') {
+      showPopover('active', data);
+      return false;
+    }
+    // logout
+    if (data.msg === 'Logout') {
+      showPopover('active', data);
+      location.reload();
+      return false;
+    }
+    // error
+    alert("Database error");
+    location.reload();
+    return false;
+  });
+};
+
+const showPopover = (popid, data) => {
+  let st = (data.state === 'on') ? true : false;
+  $('[data-toggle="'+popid+'-popover"]').popover({content: data.msg})
+        .popover("show");
+  $("div.popover-body").css('background-color', 'greenyellow');
+  $('[data-toggle="'+popid+'-popover"]').on('shown.bs.popover', () => {
+    setTimeout(() => {
+      $('[data-toggle="'+popid+'-popover"]').popover('hide');
+      $("input#is_"+popid+"_"+data.uid).prop('checked', st);
+    }, 1500);
+  });
+};
+</script>
+
+
+
+
